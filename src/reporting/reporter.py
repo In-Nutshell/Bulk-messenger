@@ -7,8 +7,9 @@ import logging
 class Reporter:
     """Handles report generation and statistics"""
     
-    def __init__(self, file_path: str = 'messaging_report.json'):
+    def __init__(self, file_path: str = 'messaging_report.json', session_manager = None):
         self.file_path = file_path
+        self.session_manager = session_manager
         self.logger = logging.getLogger(__name__)
         
     def generate_report(self, successful_sends: List[Dict], failed_contacts: List[Dict]) -> Dict:
@@ -30,6 +31,14 @@ class Reporter:
         except Exception as e:
             self.logger.error(f"Error saving report: {e}")
             
+        if self.session_manager and self.session_manager.current_session_path:
+            try:
+                session_report_path = self.session_manager.get_session_path(report.json)
+                with open(session_report_path, 'w', encoding='utf-8') as f:
+                    json.dump(report, f, indent=2, ensure_ascii=False)
+                self.logger.info(f"Session report saved to {session_report_path}")
+            except Exception as e:
+                self.logger.error(f"Error saving session report: {e}")
         return report
         
     def print_summary(self, summary: Dict, successful_sends: List[Dict], 

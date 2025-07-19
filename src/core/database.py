@@ -8,8 +8,9 @@ import logging
 class ContactDatabase:
     """Manages contact storage and retrieval"""
     
-    def __init__(self, file_path: str = 'contacts_database.json'):
+    def __init__(self, file_path: str = 'contacts_database.json', session_manager=None):
         self.file_path = file_path
+        self.session_manager = session_manager
         self.contacts = {}
         self.logger = logging.getLogger(__name__)
         
@@ -34,6 +35,15 @@ class ContactDatabase:
             self.logger.info(f"Database saved: {len(self.contacts)} contacts")
         except Exception as e:
             self.logger.error(f"Error saving database: {e}")
+        
+        if self.session_manager and self.session_manager.current_session_path:
+            try:
+                session_contacts_path = self.session_manager.get_session_path('contacts.json')
+                with open(session_contacts_path, 'w', encoding='utf-8') as f:
+                    json.dump(self.contacts, f, indent=2, ensure_ascii=False)
+                self.logger.info(f"Session contacts saved to {session_contacts_path}")
+            except Exception as e:
+                self.logger.error(f"Error saving session contacts: {e}")
             
     def add_contact(self, phone: str = None, username: str = None, 
                    user_id: int = None, first_name: str = None, 

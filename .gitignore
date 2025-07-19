@@ -13,7 +13,7 @@ cache/
 data/contacts_database.json
 data/messaging_report.json
 data/contacts.csv
-data/contacts_sample.csv
+data/sessions
 .DS_Store
 *.bak
 *.swp

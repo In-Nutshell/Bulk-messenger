@@ -1,3 +1,5 @@
+import os
+import json
 def main_menu() -> str:
     """Display main menu"""
     print("""
@@ -7,13 +9,42 @@ def main_menu() -> str:
     ║                                                                              ║
     ║ 1. Run bulk messaging                                                       ║
     ║ 2. Create sample CSV file                                                   ║
-    ║ 3. Show setup instructions                                                  ║
-    ║ 4. Exit                                                                     ║
+    ║ 3. View session history                                                     ║
+    ║ 4. Show setup instructions                                                  ║
+    ║ 5. Exit                                                                     ║
     ║                                                                              ║
     ╚══════════════════════════════════════════════════════════════════════════════╝
     """)
     
-    return input("Enter your choice (1-4): ").strip()
+    return input("Enter your choice (1-5): ").strip()
+
+def show_session_history(session_manager):
+    """Display session history"""
+    sessions = session_manager.list_sessions()
+    
+    if not sessions:
+        print("No sessions found.")
+        return
+        
+    print(f"\nFound {len(sessions)} sessions:")
+    print("-" * 50)
+    
+    for i, session_id in enumerate(sessions[:10], 1):  # Show last 10 sessions
+        session_path = os.path.join(session_manager.sessions_dir, session_id)
+        metadata_path = os.path.join(session_path, 'metadata.json')
+        
+        try:
+            with open(metadata_path, 'r', encoding='utf-8') as f:
+                metadata = json.load(f)
+            
+            print(f"{i}. {session_id}")
+            print(f"   Success: {metadata.get('successful_sends', 'N/A')}")
+            print(f"   Failed: {metadata.get('failed_sends', 'N/A')}")
+            print(f"   Total: {metadata.get('total_contacts', 'N/A')}")
+            print()
+            
+        except Exception as e:
+            print(f"{i}. {session_id} (metadata unavailable)")
 
 
 def get_user_confirmation(contacts_count: int, delay: float) -> bool:
