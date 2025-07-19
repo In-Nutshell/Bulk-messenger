@@ -12,6 +12,10 @@ class Config:
     # Get the project root directory (parent of config folder)
     PROJECT_ROOT = os.path.dirname(CONFIG_DIR)
     
+    # Session management
+    DATA_DIR = 'data'
+    SESSIONS_DIR = os.path.join(DATA_DIR, 'sessions')
+    
     # Safety Settings
     SAFE_DAILY_LIMIT = 50
     SAFE_DELAY = 5.0  # seconds between messages

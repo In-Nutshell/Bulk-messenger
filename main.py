@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from config.config import Config
 from src.utils.logger import setup_logging
 from src.core.database import ContactDatabase
@@ -6,7 +7,9 @@ from src.core.telegram_client import TelegramClientWrapper
 from src.messaging.message_sender import MessageSender
 from src.utils.safety_manager import SafetyManager
 from src.reporting.reporter import Reporter
-from src.utils.ui import main_menu, get_user_confirmation, setup_instructions, create_sample_csv
+from src.utils.session_manager import SessionManager
+print("SessionManager imported successfully") 
+from src.utils.ui import main_menu, get_user_confirmation, setup_instructions, create_sample_csv, show_session_history
 
 
 class TelegramBulkMessenger:
@@ -15,7 +18,13 @@ class TelegramBulkMessenger:
     def __init__(self):
         self.config = Config()
         self.logger = setup_logging(self.config.LOG_FILE)
-        self.database = ContactDatabase(self.config.DATABASE_FILE)
+        try:
+            self.session_manager = SessionManager()
+            print(f"SessionManager initialized: {self.session_manager}")
+        except Exception as e:
+            print(f"Failed to initialize SessionManager: {e}")
+            self.session_manager = None
+        self.database = ContactDatabase(self.config.DATABASE_FILE, self.session_manager)
         self.telegram_client = TelegramClientWrapper(
             self.config.API_ID, 
             self.config.API_HASH, 
@@ -26,11 +35,13 @@ class TelegramBulkMessenger:
             self.config.SAFE_DAILY_LIMIT, 
             self.config.SAFE_DELAY
         )
-        self.reporter = Reporter(self.config.REPORT_FILE)
+        self.reporter = Reporter(self.config.REPORT_FILE, self.session_manager)
         
     async def run_bulk_messaging(self):
         """Run the bulk messaging process"""
         try:
+            session_id = self.session_manager.create_session()
+            self.logger.info(f"Starting new session: {session_id}")
             # Start Telegram client
             await self.telegram_client.start()
             
@@ -68,16 +79,28 @@ class TelegramBulkMessenger:
             )
             
             # Print summary
+            
+            metadata = {
+                'session_id': session_id,
+                'start_time': datetime.now().isoformat(),
+                'total_contacts': len(all_contacts),
+                'processed_contacts': len(safe_contacts),
+                'successful_sends': len(self.message_sender.successful_sends),
+                'failed_sends': len(self.message_sender.failed_contacts),
+                'message': message,
+                'delay_used': safe_delay
+            }
+            self.session_manager.save_session_metadata(metadata)
+            
             self.reporter.print_summary(
                 summary,
                 self.message_sender.successful_sends,
                 self.message_sender.failed_contacts
             )
-            
             # Save database
             self.database.save_to_file()
             print(f"\nDatabase and report saved successfully!")
-            
+            print(f"Session ID: {session_id}")
         except Exception as e:
             self.logger.error(f"Error in bulk messaging: {e}")
             print(f"Error: {e}")
@@ -103,10 +126,12 @@ async def main():
             await messenger.run_bulk_messaging()
             break
         elif choice == '2':
-            create_sample_csv(messenger.config.SAMPLE_CSV)
-        elif choice == '3':
+            create_sample_csv(messenger.config.SAMPLE_CSV if hasattr(messenger.config, 'SAMPLE_CSV') else 'contacts_sample.csv')
+        elif choice == '3':  # NEW: View session history
+            show_session_history(messenger.session_manager)
+        elif choice == '4':  # UPDATED: Setup instructions
             setup_instructions()
-        elif choice == '4':
+        elif choice == '5':  # UPDATED: Exit
             print("Goodbye!")
             break
         else:
